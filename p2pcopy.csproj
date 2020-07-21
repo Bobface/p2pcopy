@@ -8,8 +8,8 @@
     <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="UdtProtocol">
-      <HintPath>udt64\UdtProtocol.dll</HintPath>
+    <Reference Include="udtsharp">
+      <HintPath>udtsharp\udtsharp.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
