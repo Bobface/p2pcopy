@@ -38,7 +38,6 @@ namespace p2pcopy
                 }
 
                 socket.Bind(new IPEndPoint(IPAddress.Any, cla.LocalPort));
-
                 P2pEndPoint p2pEndPoint = GetExternalEndPoint(socket);
 
                 if (p2pEndPoint == null)
@@ -493,17 +492,17 @@ namespace p2pcopy
                     if (client != null)
                         client.Close();
 
-                    client = new UdtSocket(AddressFamily.InterNetwork, SocketType.Stream);
-
+                    Console.WriteLine("Creating UDT socket");
+                    client = new UdtSocket(socket.AddressFamily, socket.SocketType);
+                    Console.WriteLine("Binding UDT socket");
+                    client.Bind(socket);
                     //client.SetSocketOption(Udt.SocketOptionName.Rendezvous, true);
-
-                    client.Bind(socket.LocalEndPoint as IPEndPoint);
+                    //client.Bind(socket);
 
                     Console.Write("\r{0} - Trying to connect to {1}:{2}.  ",
                         retry++, remoteAddr, remotePort);
 
-                    
-                    client.Connect(IPEndPoint.Parse(remoteAddr + ":" + remotePort.ToString()));
+                    client.Connect(new IPEndPoint(IPAddress.Parse(remoteAddr), remotePort));
 
                     Console.WriteLine("Connected successfully to {0}:{1}",
                         remoteAddr, remotePort);
