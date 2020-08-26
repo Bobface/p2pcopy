@@ -58,9 +58,6 @@
   <ItemGroup>
     <EmbeddedResource Include="costura64\msvcp100.dll" />
     <EmbeddedResource Include="costura64\msvcr100.dll" />
-    <Content Include="FodyWeavers.xml">
-      <SubType>Designer</SubType>
-    </Content>
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
