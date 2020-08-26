@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Net;
 using System.Net.Sockets;
 using System.Globalization;
 using System.IO;
@@ -8,41 +8,9 @@ namespace p2pcopy
 {
     static class InternetTime
     {
-        static internal List<string> servers = new List<string>()
+        /*static internal DateTime Get()
         {
-            "nist.colorado-networks.com",
-            "nist.expertsmi.com",
-            "nist.netservicesgroup.com",
-            "nist-time-server.eoni.com",
-            "nist1.aol-ca.symmetricom.com",
-            "nist1.aol-va.symmetricom.com",
-            "nist1.columbiacountyga.gov",
-            "nist1.symmetricom.com",
-            "nist1-atl.ustiming.org",
-            "nist1-chi.ustiming.org",
-            "nist1-la.ustiming.org",
-            "nist1-lnk.binary.net",
-            "nist1-lv.ustiming.org",
-            "nist1-nj.ustiming.org",
-            "nist1-ny.ustiming.org",
-            "nist1-pa.ustiming.org",
-            "nist1-sj.ustiming.org",
-            "nisttime.carsoncity.k12.mi.us",
-            "ntp-nist.ldsbc.edu",
-            "time.nist.gov",
-            "time-a.nist.gov",
-            "time-a.timefreq.bldrdoc.gov",
-            "time-b.nist.gov",
-            "time-b.timefreq.bldrdoc.gov",
-            "time-c.timefreq.bldrdoc.gov",
-            "time-nw.nist.gov",
-            "utcnist.colorado.edu",
-            "utcnist2.colorado.edu"
-        };
-
-        static internal DateTime Get()
-        {
-            string server = servers[new Random().Next(0, servers.Count)];
+            string server = "time.nist.gov";
             var client = new TcpClient(server, 13);
             using (var streamReader = new StreamReader(client.GetStream()))
             {
@@ -52,6 +20,68 @@ namespace p2pcopy
                 client.Close();
                 return DateTime.ParseExact(utcDateTimeString, "yy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal);
             }
+        }*/
+
+        public static DateTime Get()
+        {
+            // https://stackoverflow.com/questions/1193955/how-to-query-an-ntp-server-using-c
+
+            //default Windows time server
+            const string ntpServer = "pool.ntp.org";
+
+            // NTP message size - 16 bytes of the digest (RFC 2030)
+            var ntpData = new byte[48];
+
+            //Setting the Leap Indicator, Version Number and Mode values
+            ntpData[0] = 0x1B; //LI = 0 (no warning), VN = 3 (IPv4 only), Mode = 3 (Client Mode)
+
+            var addresses = Dns.GetHostEntry(ntpServer).AddressList;
+
+            //The UDP port number assigned to NTP is 123
+            var ipEndPoint = new IPEndPoint(addresses[0], 123);
+            //NTP uses UDP
+
+            using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp))
+            {
+                socket.Connect(ipEndPoint);
+
+                //Stops code hang if NTP is blocked
+                socket.ReceiveTimeout = 3000;
+
+                socket.Send(ntpData);
+                socket.Receive(ntpData);
+                socket.Close();
+            }
+
+            //Offset to get to the "Transmit Timestamp" field (time at which the reply 
+            //departed the server for the client, in 64-bit timestamp format."
+            const byte serverReplyTime = 40;
+
+            //Get the seconds part
+            ulong intPart = BitConverter.ToUInt32(ntpData, serverReplyTime);
+
+            //Get the seconds fraction
+            ulong fractPart = BitConverter.ToUInt32(ntpData, serverReplyTime + 4);
+
+            //Convert From big-endian to little-endian
+            intPart = SwapEndianness(intPart);
+            fractPart = SwapEndianness(fractPart);
+
+            var milliseconds = (intPart * 1000) + ((fractPart * 1000) / 0x100000000L);
+
+            //**UTC** time
+            var networkDateTime = (new DateTime(1900, 1, 1, 0, 0, 0, DateTimeKind.Utc)).AddMilliseconds((long)milliseconds);
+
+            return networkDateTime.ToLocalTime();
+        }
+
+        // stackoverflow.com/a/3294698/162671
+        static uint SwapEndianness(ulong x)
+        {
+            return (uint)(((x & 0x000000ff) << 24) +
+                           ((x & 0x0000ff00) << 8) +
+                           ((x & 0x00ff0000) >> 8) +
+                           ((x & 0xff000000) >> 24));
         }
     }
 }
